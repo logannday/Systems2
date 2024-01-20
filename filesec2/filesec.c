@@ -14,9 +14,9 @@ int main(int argc, char **argv) {
 
   int opt;
   enum mode mode = ENCRYPT;
-
   char input_file_name[128];
 
+  // Handle command line arguments
   while ((opt = getopt(argc, argv, "e:d:")) != -1) {
     switch (opt) {
     case 'e':
@@ -47,14 +47,13 @@ int main(int argc, char **argv) {
   } else {
     process(input_file_name, DECRYPT);
   }
-  // file name will not exceed 128 characters.
-
   
   return 0;
 }
 
-// Encrypt or decrypt file based n mode. Return 
-// input file length
+/* Encrypt or decrypt file based on mode paramater. Return 
+* input file length
+*/
 int process(char *file_name, enum mode mode) {
   struct timeval time;
   struct timezone timezone;
@@ -64,7 +63,6 @@ int process(char *file_name, enum mode mode) {
     exit(EXIT_FAILURE);
   }
   time_t start_ms = time.tv_usec;
-  // printf("start time: %ld\n", time.tv_sec);
 
   int input_fd = open(file_name, O_RDONLY);
   if (input_fd == -1) {
@@ -73,7 +71,6 @@ int process(char *file_name, enum mode mode) {
   }
 
   off_t input_file_length = lseek(input_fd, 0, SEEK_END);
-  printf("Input file length: %lld\n", input_file_length);
   lseek(input_fd, 0, SEEK_SET);
   char *buffer = (char *)malloc(input_file_length * sizeof(char));
 
@@ -103,7 +100,7 @@ int process(char *file_name, enum mode mode) {
 
   free(buffer);
 
-  // Get time after encoding
+  // Get time after encoding finishes
   success = gettimeofday(&time, &timezone);
   if (success == -1) {
     fprintf(stderr, "failed getting time");
@@ -111,7 +108,7 @@ int process(char *file_name, enum mode mode) {
   }
   time_t end_ms = time.tv_usec;
   
-  // Write file size and time elapsed to output.txt
+  // Append file size and time elapsed to log.txt
   int fd = open("log.txt", O_WRONLY | O_CREAT, S_IRWXU);
   lseek(fd, 0, SEEK_END);
   char strang[30];
