@@ -42,11 +42,10 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  int file_len = 0;
   if (mode == ENCRYPT) {
-    file_len = process(input_file_name, ENCRYPT);
+    process(input_file_name, ENCRYPT);
   } else {
-    file_len = process(input_file_name, DECRYPT);
+    process(input_file_name, DECRYPT);
   }
   // file name will not exceed 128 characters.
 
@@ -74,7 +73,7 @@ int process(char *file_name, enum mode mode) {
   }
 
   off_t input_file_length = lseek(input_fd, 0, SEEK_END);
-  printf("Input file length: %ld\n", input_file_length);
+  printf("Input file length: %lld\n", input_file_length);
   lseek(input_fd, 0, SEEK_SET);
   char *buffer = (char *)malloc(input_file_length * sizeof(char));
 
@@ -104,19 +103,19 @@ int process(char *file_name, enum mode mode) {
 
   free(buffer);
 
-  // Print file info
+  // Get time after encoding
   success = gettimeofday(&time, &timezone);
   if (success == -1) {
     fprintf(stderr, "failed getting time");
     exit(EXIT_FAILURE);
   }
   time_t end_ms = time.tv_usec;
-  printf("time elapsed: %lu\n", end_ms - start_ms);
-  // Write values to output file
-  int fd = open("output.txt", O_APPEND | O_WRONLY, S_IRWXU);
+  
+  // Write file size and time elapsed to output.txt
+  int fd = open("log.txt", O_WRONLY | O_CREAT, S_IRWXU);
+  lseek(fd, 0, SEEK_END);
   char strang[30];
-  sprintf(strang, "%d %lu\n", file_len, end_ms - start_ms); 
-  // printf("%s", strang);
+  sprintf(strang, "%lld %lu\n", input_file_length, end_ms - start_ms); 
   write(fd, strang, strlen(strang));
   return input_file_length;
 }
