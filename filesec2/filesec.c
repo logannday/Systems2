@@ -37,7 +37,6 @@ int main(int argc, char **argv) {
 
   // Check that at least one flag was passed
   if (optind == 1) {
-    fprintf(stderr, "At least one flag is required.\n");
     usage();
     exit(EXIT_FAILURE);
   }
@@ -59,7 +58,8 @@ int process(char *file_name, enum mode mode) {
   struct timezone timezone;
   int success = gettimeofday(&time, &timezone);
   if (success == -1) {
-    fprintf(stderr, "failed getting time");
+    char message[] = "failed getting time";
+    write(1, message, strlen(message));
     exit(EXIT_FAILURE);
   }
   time_t start_ms = time.tv_usec;
@@ -120,6 +120,8 @@ int process(char *file_name, enum mode mode) {
 int decrypt(char *file_name) { return 0; }
 
 void usage(void) {
-  fprintf(stderr, "Usage: filesec -e|-d [filename] \n");
+  char usage[] = "Usage: \nfilesec -e|-d [filename] \n";
+  fflush(stdout);
+  write(1, usage, strlen(usage));
   exit(EXIT_FAILURE);
 }
