@@ -92,8 +92,8 @@ int process(char *file_name, enum mode mode) {
   char *output_filename = strcat(file_name, suffix);
 
   // Writing buffer to output file
-  int output = open(output_filename, O_RDWR | O_CREAT, S_IRWXU);
-  int written = write(output, buffer, input_file_length);
+  int output_fd = open(output_filename, O_RDWR | O_CREAT, S_IRWXU);
+  int written = write(output_fd, buffer, input_file_length);
   if (written == -1) {
     char message[] = "Failed to write to output file\n";
     write(STDERR_FILENO, message, strlen(message));
@@ -115,15 +115,16 @@ int process(char *file_name, enum mode mode) {
   int fd = open("log.txt", O_WRONLY | O_CREAT, S_IRWXU);
   lseek(fd, 0, SEEK_END);
   char strang[30];
-  sprintf(strang, "%lld %lu\n", input_file_length, end_ms - start_ms);
+  sprintf(strang, "%ld %lu\n", input_file_length, end_ms - start_ms);
   write(fd, strang, strlen(strang));
+  close(fd);
+  close(input_fd);
+  close(output_fd);
   return input_file_length;
 }
 
-int decrypt(char *file_name) { return 0; }
-
 void usage(void) {
-  char usage[] = "Usage: \nfilesec -e|-d [filename] \n";
+  char usage[] = "Usage: \n./filesec -e|-d [filename] \n";
   fflush(stdout);
   write(1, usage, strlen(usage));
   exit(EXIT_FAILURE);
