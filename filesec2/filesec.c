@@ -46,13 +46,13 @@ int main(int argc, char **argv) {
   } else {
     process(input_file_name, DECRYPT);
   }
-  
+
   return 0;
 }
 
-/* Encrypt or decrypt file based on mode paramater. Return 
-* input file length
-*/
+/* Encrypt or decrypt file based on mode paramater. Return
+ * input file length
+ */
 int process(char *file_name, enum mode mode) {
   struct timeval time;
   struct timezone timezone;
@@ -66,7 +66,8 @@ int process(char *file_name, enum mode mode) {
 
   int input_fd = open(file_name, O_RDONLY);
   if (input_fd == -1) {
-    fprintf(stderr, "Failed to open file for reading\n");
+    char message[] = "Failed to open file for reading\n";
+    write(STDERR_FILENO, message, strlen(message));
     exit(EXIT_FAILURE);
   }
 
@@ -94,7 +95,8 @@ int process(char *file_name, enum mode mode) {
   int output = open(output_filename, O_RDWR | O_CREAT, S_IRWXU);
   int written = write(output, buffer, input_file_length);
   if (written == -1) {
-    fprintf(stderr, "Failed to write to output file/n");
+    char message[] = "Failed to write to output file\n";
+    write(STDERR_FILENO, message, strlen(message));
     exit(EXIT_FAILURE);
   }
 
@@ -103,16 +105,17 @@ int process(char *file_name, enum mode mode) {
   // Get time after encoding finishes
   success = gettimeofday(&time, &timezone);
   if (success == -1) {
-    fprintf(stderr, "failed getting time");
+    char message[] = "failed getting time";
+    write(STDERR_FILENO, message, strlen(message));
     exit(EXIT_FAILURE);
   }
   time_t end_ms = time.tv_usec;
-  
-  // Append file size and time elapsed to log.txt
+
+  // This code was used to create a log file of input sizes and runtimes
   int fd = open("log.txt", O_WRONLY | O_CREAT, S_IRWXU);
   lseek(fd, 0, SEEK_END);
   char strang[30];
-  sprintf(strang, "%lld %lu\n", input_file_length, end_ms - start_ms); 
+  sprintf(strang, "%lld %lu\n", input_file_length, end_ms - start_ms);
   write(fd, strang, strlen(strang));
   return input_file_length;
 }
