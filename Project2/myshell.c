@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define DEFAULT_BUFFER_SIZE 20
 /* PROTOTYPES */
 
 void processline(char *line);
@@ -25,11 +26,13 @@ ssize_t getinput(char **line, size_t *size);
 
 int main() {
   char **line;
-  size_t size = 10 * sizeof(char);
-  *line = (char*)malloc(size);
+  size_t size = DEFAULT_BUFFER_SIZE * sizeof(char);
+  *line = (char*)malloc(DEFAULT_BUFFER_SIZE);
   size_t result = getinput(line, &size);
   printf("result: %s", *line);
+  processline(*line);
 
+  free(line);
   return EXIT_SUCCESS;
 }
 
@@ -48,6 +51,10 @@ int main() {
 ssize_t getinput(char **line, size_t *size) {
   printf("$");
   fflush(stdout);
+  if (line == NULL) {
+    line = malloc(DEFAULT_BUFFER_SIZE * sizeof(char));
+    *size = DEFAULT_BUFFER_SIZE;
+  }
 
   int buffer_size = *size;
   int c;
@@ -88,9 +95,14 @@ void processline(char *line) {
   int status;
   int argCount;
   char **arguments = argparse(line, &argCount);
+  // printf("argcount: %d\n", argCount);
+  for (int i = 0; i < argCount; i++) {
+    printf("arg %d: %s\n", i, arguments[i]);
+  }
 
-  /*check whether arguments are builtin commands
-   *if not builtin, fork to execute the command.
-   */
-  // write your code
+  //Free all of the strings in the array, then the array
+  for(int i = 0; i < argCount; i++) {
+    free(arguments[i]);
+  }
+  free(arguments);
 }

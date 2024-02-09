@@ -1,6 +1,7 @@
 #include "argparse.h"
 #include <ctype.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,22 @@
  */
 static int argCount(char *line) {
   // write your code
+  bool in_whitespace = true;
+  int count = 0;
+  char *tmp = line;
+
+  while(*tmp != '\0') {
+    // Count words from the beginning
+    if (!isspace(*tmp) && in_whitespace) {
+      count++;
+      in_whitespace = false;
+    } else if (isspace(*tmp)) {
+      in_whitespace = true;
+    }
+    tmp++;
+  }
+
+  return count;
 }
 
 /*
@@ -27,5 +44,16 @@ static int argCount(char *line) {
  * The count of how many arguments there are is saved in the argcp pointer
  */
 char **argparse(char *line, int *argcp) {
-  // write your code
+  // Iterate through the string
+  *argcp = argCount(line);
+  // Todo: free this
+  // Initialize all pointers to null
+  char **strings = (char**)calloc(*argcp, sizeof(char*));
+  for (int i = 0; i < *argcp; i++) {
+    // Maybe don't hardcode this
+    strings[i] = malloc(30 * sizeof(char));
+  }
+
+
+  return NULL;
 }
