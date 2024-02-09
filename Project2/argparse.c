@@ -18,13 +18,16 @@
  * delimeter.
  */
 static int argCount(char *line) {
-  // write your code
+  if (line == NULL) {
+    fprintf(stderr, "line read into argcount was null\n");
+    exit(-1);
+  }
   bool in_whitespace = true;
   int count = 0;
   char *tmp = line;
 
   size_t i = 0;
-  char c;
+  char c = '\0';
   while((c = line[i++]) != '\0') {
     // Count words from the beginning
     if (!isspace(c) && in_whitespace) {
@@ -51,9 +54,22 @@ char **argparse(char *line, int *argcp) {
   // Todo: free this
   // Initialize all pointers to null
   char **strings = (char**)calloc(*argcp, sizeof(char*));
+  char *tmp = line;
   for (int i = 0; i < *argcp; i++) {
     // Maybe don't hardcode this
     strings[i] = malloc(30 * sizeof(char));
+    // Skip to first character of word
+    while(isspace(*tmp)) {
+      tmp++;
+    }
+    char* string_index = strings[i];
+    // copy word into string
+    while(!isspace(*tmp) && *tmp != '\0') {
+      *string_index = *tmp;
+      tmp++;
+      string_index++;
+    }
+    *string_index = '\0';
   }
   printf("num args: %d\n", *argcp);
 

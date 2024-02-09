@@ -27,13 +27,14 @@ ssize_t getinput(char **line, size_t *size);
 int main() {
   char **line;
   size_t size = DEFAULT_BUFFER_SIZE * sizeof(char);
-  line = (char**)malloc(sizeof(char*));
+  line = (char **)malloc(sizeof(char *));
   *line = (char *)malloc(size);
-  size_t result = getinput(line, &size);
 
-  processline(*line);
+  while (1) {
+    size_t result = getinput(line, &size);
+    processline(*line);
+  }
 
-  printf("final free\n");
   free(*line);
   free(line);
   return EXIT_SUCCESS;
@@ -77,7 +78,7 @@ ssize_t getinput(char **line, size_t *size) {
     index++;
   }
 
-  printf("final size: %lu\n", buffer_size / sizeof(char));
+  // printf("buffer size: %lu\n", buffer_size / sizeof(char));
 
   return buffer_size;
 }
@@ -103,12 +104,13 @@ void processline(char *line) {
     // printf("arg %d: %s\n", i, arguments[i]);
   }
 
+  builtIn(arguments, argCount);
+
   // Free all of the strings in the array, then the array
   for (int i = 0; i < argCount; i++) {
+    // printf("arguments[%d]: %s\n", i, arguments[i]);
     free(arguments[i]);
-    printf("freed\n");
   }
 
-  printf("freed\n");
   free(arguments);
 }
