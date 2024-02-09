@@ -27,11 +27,14 @@ ssize_t getinput(char **line, size_t *size);
 int main() {
   char **line;
   size_t size = DEFAULT_BUFFER_SIZE * sizeof(char);
-  *line = (char*)malloc(DEFAULT_BUFFER_SIZE);
+  line = (char**)malloc(sizeof(char*));
+  *line = (char *)malloc(size);
   size_t result = getinput(line, &size);
-  printf("result: %s", *line);
+
   processline(*line);
 
+  printf("final free\n");
+  free(*line);
   free(line);
   return EXIT_SUCCESS;
 }
@@ -58,18 +61,18 @@ ssize_t getinput(char **line, size_t *size) {
 
   int buffer_size = *size;
   int c;
-  char * tmp = *line;
+  char *tmp = *line;
   int index = 0;
   // Read in chars from stdin, once the chars exceed
-  while((c = getc(stdin)) != '\n' && c != EOF) {
+  while ((c = getc(stdin)) != '\n' && c != EOF) {
     if (index > buffer_size - 2) {
       buffer_size += 1;
-      void* result = realloc(*line, buffer_size);
+      void *result = realloc(*line, buffer_size);
       if (result == NULL) {
         fprintf(stderr, "failure\n");
         exit(1);
       }
-    } 
+    }
     *tmp++ = (char)c;
     index++;
   }
@@ -97,12 +100,15 @@ void processline(char *line) {
   char **arguments = argparse(line, &argCount);
   // printf("argcount: %d\n", argCount);
   for (int i = 0; i < argCount; i++) {
-    printf("arg %d: %s\n", i, arguments[i]);
+    // printf("arg %d: %s\n", i, arguments[i]);
   }
 
-  //Free all of the strings in the array, then the array
-  for(int i = 0; i < argCount; i++) {
+  // Free all of the strings in the array, then the array
+  for (int i = 0; i < argCount; i++) {
     free(arguments[i]);
+    printf("freed\n");
   }
+
+  printf("freed\n");
   free(arguments);
 }

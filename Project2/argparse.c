@@ -23,15 +23,17 @@ static int argCount(char *line) {
   int count = 0;
   char *tmp = line;
 
-  while(*tmp != '\0') {
+  size_t i = 0;
+  char c;
+  while((c = line[i++]) != '\0') {
     // Count words from the beginning
-    if (!isspace(*tmp) && in_whitespace) {
+    if (!isspace(c) && in_whitespace) {
       count++;
       in_whitespace = false;
-    } else if (isspace(*tmp)) {
+    } else if (isspace(c)) {
       in_whitespace = true;
     }
-    tmp++;
+    // tmp++;
   }
 
   return count;
@@ -53,7 +55,8 @@ char **argparse(char *line, int *argcp) {
     // Maybe don't hardcode this
     strings[i] = malloc(30 * sizeof(char));
   }
+  printf("num args: %d\n", *argcp);
 
 
-  return NULL;
+  return strings;
 }
