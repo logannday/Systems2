@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <pwd.h>
 
 // Prototypes
 static void exitProgram(char **args, int argcp);
@@ -39,12 +40,13 @@ int builtIn(char **args, int argcp) {
       result = 1;
     }
   }
+
   return result;
 }
 
 static void exitProgram(char **args, int argcp) {
   int exit_val = 0;
-  if (argcp == 2) {
+  if (argcp >= 2) {
     exit_val = atoi(args[1]);
   }
   exit(exit_val);
@@ -63,13 +65,20 @@ static void pwd(char **args, int argcp) {
 }
 
 static void cd(char **args, int argcp) {
+  int uid = getuid();
+  struct passwd *password = getpwuid(uid);
+  const char *home = password->pw_dir;
+  printf("%s\n", home);
+  // Use getenv to find
   if (argcp < 2) {
-    fprintf(stderr, "Usage: cd [directory name]\n");
+    if (chdir(home) == -1) {
+      fprintf(stderr, "invalid path\n");
+    }
     return;
   }
-  int result = chdir(args[1]);
-  if (result == -1) {
-    fprintf(stderr, "invalid path");
+
+  if (chdir(args[1]) == -1) {
+    fprintf(stderr, "invalid path\n");
   }
   printf("cd\n");
 }

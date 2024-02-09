@@ -71,7 +71,7 @@ char **argparse(char *line, int *argcp) {
     }
     *string_index = '\0';
   }
-  printf("num args: %d\n", *argcp);
+  // printf("num args: %d\n", *argcp);
 
 
   return strings;
