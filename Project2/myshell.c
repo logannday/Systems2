@@ -53,7 +53,7 @@ int main() {
  * than it sounds.
  */
 ssize_t getinput(char **line, size_t *size) {
-  printf("$");
+  printf("%% ");
   fflush(stdout);
   if (line == NULL) {
     line = malloc(DEFAULT_BUFFER_SIZE * sizeof(char));
@@ -68,8 +68,7 @@ ssize_t getinput(char **line, size_t *size) {
   while ((c = getc(stdin)) != '\n' && c != EOF) {
     if (index > buffer_size - 2) {
       buffer_size += 1;
-      void *result = realloc(*line, buffer_size);
-      if (result == NULL) {
+      if ((realloc(*line, buffer_size)) == NULL) {
         fprintf(stderr, "failure\n");
         exit(1);
       }
@@ -77,8 +76,7 @@ ssize_t getinput(char **line, size_t *size) {
     *tmp++ = (char)c;
     index++;
   }
-
-  // printf("buffer size: %lu\n", buffer_size / sizeof(char));
+  *tmp = '\0';
 
   return buffer_size;
 }
@@ -108,7 +106,7 @@ void processline(char *line) {
 
   // Free all of the strings in the array, then the array
   for (int i = 0; i < argCount; i++) {
-    // printf("arguments[%d]: %s\n", i, arguments[i]);
+    // printf("arguments[%d]: |%s|\n", i, arguments[i]);
     free(arguments[i]);
   }
 
