@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <linux/limits.h>
 #include <pwd.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -96,10 +97,23 @@ static void cd(char **args, int argcp) {
 }
 
 static void ls(char **args, int argcp) {
-  printf("ls\n");
+  bool long_format = false;
+  if (argcp >= 2) {
+    if (strcmp(args[1], "-l") != 0) {
+      fprintf(stderr, "usage: ls [-l]\n");
+      return;
+    }
+    long_format == true;
+  }
   int uid = getuid();
   struct passwd *password = getpwuid(uid);
-  char *buffer = malloc(PATH_MAX * sizeof(char));
+
+  char *buffer;
+  if ((buffer = malloc(PATH_MAX * sizeof(char))) == NULL) {
+    fprintf(stderr, "Malloc failed\n");
+    exit(-1);
+  }
+
   char *path;
   if ((path = getcwd(buffer, PATH_MAX)) == NULL) {
     fprintf(stderr, "failed to get wd\n");
@@ -115,6 +129,7 @@ static void ls(char **args, int argcp) {
   struct dirent *dirent;
   while ((dirent = readdir(dir)) != NULL) {
     printf("%s\n", dirent->d_name);
+    // use lstat to grab info
   }
   closedir(dir);
 
@@ -123,4 +138,9 @@ static void ls(char **args, int argcp) {
 
 static void cp(char **args, int argcp) {}
 
-static void env(char **args, int argcp) {}
+static void env(char **args, int argcp) {
+  extern char** environ;
+  while (environ++ != NULL) {
+    printf("%s\n", *environ);
+  }
+}
