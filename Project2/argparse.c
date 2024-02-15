@@ -28,7 +28,7 @@ static int argCount(char *line) {
 
   size_t i = 0;
   char c = '\0';
-  while((c = line[i++]) != '\0') {
+  while(line != NULL && (c = line[i++]) != '\0') {
     // Count words from the beginning
     if (!isspace(c) && in_whitespace) {
       count++;

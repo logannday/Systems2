@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#define BUFFER_SIZE 128000
 
 // Prototypes
 static void exitProgram(char **args, int argcp);
@@ -57,11 +58,19 @@ int builtIn(char **args, int argcp) {
   return result;
 }
 
+// bool exiting;
+// int exit_value;
+
+// TODO: Make sure everything gets freed before exit is called
 static void exitProgram(char **args, int argcp) {
   int exit_val = 0;
+
   if (argcp >= 2) {
     exit_val = atoi(args[1]);
   }
+
+  // exiting = true;
+  // exit_value = exit_val;
   exit(exit_val);
 }
 
@@ -78,10 +87,10 @@ static void pwd(char **args, int argcp) {
 }
 
 static void cd(char **args, int argcp) {
-  // printf("running cd\n");
   int uid = getuid();
   struct passwd *password = getpwuid(uid);
   const char *home = password->pw_dir;
+
   // Use getenv to find
   if (argcp < 2) {
     if (chdir(home) == -1) {
@@ -96,6 +105,7 @@ static void cd(char **args, int argcp) {
   printf("cd\n");
 }
 
+// TODO: implement -l
 static void ls(char **args, int argcp) {
   bool long_format = false;
   if (argcp >= 2) {
@@ -105,6 +115,7 @@ static void ls(char **args, int argcp) {
     }
     long_format == true;
   }
+
   int uid = getuid();
   struct passwd *password = getpwuid(uid);
 
@@ -136,11 +147,50 @@ static void ls(char **args, int argcp) {
   free(buffer);
 }
 
-static void cp(char **args, int argcp) {}
+// TODO: Make sure to copy permissions as well!!
+static void cp(char **args, int argcp) {
+  if (argcp < 3) {
+    printf("Usage: cp  <src_file_name target_file_name>\n");
+  }
 
+  printf("%s %s\n", args[1], args[2]);
+
+  FILE *input;
+  if ((input = fopen(args[1], "r")) == NULL) {
+    fprintf(stderr, "failed to open %s\n", args[1]);
+    return;
+  }
+
+  FILE *output;
+  if ((output = fopen(args[2], "w")) == NULL) {
+    fprintf(stderr, "failed to open %s\n", args[2]);
+    return;
+  }
+
+  char buffer[BUFFER_SIZE];
+  size_t bytes_read;
+  while ((bytes_read = fread(buffer, BUFFER_SIZE, sizeof(char), input)) != 0) {
+    if ((fwrite(buffer, BUFFER_SIZE, sizeof(char), output)) != 0) {
+      fprintf(stderr, "failed to write bytes\n");
+      return;
+    }
+  }
+}
+
+// Print all environment variables, or set with: env [KEY=Value]
 static void env(char **args, int argcp) {
-  extern char** environ;
-  while (environ++ != NULL) {
-    printf("%s\n", *environ);
+
+  if (argcp == 2) {
+    if (putenv(args[1]) != 0) {
+      fprintf(stderr, "Failure to modify environment variable\n");
+      fprintf(stderr, "Usage = env [KEY=Value]\n");
+    }
+  }
+
+  extern char **environ;
+  char** tmp = environ;
+  while (*tmp != NULL) {
+    printf("%s\n", *tmp);
+    tmp++;
   }
 }
