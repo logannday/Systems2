@@ -149,32 +149,53 @@ static void ls(char **args, int argcp) {
 
 // TODO: Make sure to copy permissions as well!!
 static void cp(char **args, int argcp) {
+  struct stat fs;
+  int r;
+
   if (argcp < 3) {
     printf("Usage: cp  <src_file_name target_file_name>\n");
   }
 
-  printf("%s %s\n", args[1], args[2]);
-
-  FILE *input;
-  if ((input = fopen(args[1], "r")) == NULL) {
-    fprintf(stderr, "failed to open %s\n", args[1]);
+  // printf("%s %s\n", args[1], args[2]);
+  r = stat(args[1], &fs);
+  struct stat file_stat;
+  if (stat(args[1], &file_stat) == -1) {
+    perror("Error getting file permissions");
     return;
   }
 
-  FILE *output;
-  if ((output = fopen(args[2], "w")) == NULL) {
-    fprintf(stderr, "failed to open %s\n", args[2]);
+  int input_fd = open(args[1], O_RDONLY);
+  if (input_fd == -1) {
+    perror("Error creating new file");
     return;
   }
 
-  char buffer[BUFFER_SIZE];
-  size_t bytes_read;
-  while ((bytes_read = fread(buffer, BUFFER_SIZE, sizeof(char), input)) != 0) {
-    if ((fwrite(buffer, BUFFER_SIZE, sizeof(char), output)) != 0) {
-      fprintf(stderr, "failed to write bytes\n");
-      return;
+  //Open the new file with the same permissions
+  int output_fd = open(args[2], O_CREAT | O_WRONLY | O_TRUNC);
+  if (output_fd == -1) {
+    perror("Error creating new file");
+    return;
+  }
+
+  // Set the permissions of the new file
+  if (fchmod(output_fd, file_stat.st_mode) == -1) {
+    perror("Error setting file permissions");
+    return;
+  }
+
+  char* buffer = malloc(BUFFER_SIZE * sizeof(char));
+  while (read(input_fd, buffer, BUFFER_SIZE) > 0) {
+    int bytes_written = write(output_fd, buffer, BUFFER_SIZE);
+    if (bytes_written == -1) {
+      perror("failed to write to output file\n");
     }
   }
+
+  // Close the new file
+  close(output_fd);
+  close(input_fd);
+
+
 }
 
 // Print all environment variables, or set with: env [KEY=Value]
@@ -188,7 +209,7 @@ static void env(char **args, int argcp) {
   }
 
   extern char **environ;
-  char** tmp = environ;
+  char **tmp = environ;
   while (*tmp != NULL) {
     printf("%s\n", *tmp);
     tmp++;
