@@ -12,8 +12,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define DEFAULT_BUFFER_SIZE 20
+// extern bool exiting;
+// extern int exit_val;
 /* PROTOTYPES */
 
 void processline(char *line);
@@ -25,10 +28,14 @@ ssize_t getinput(char **line, size_t *size);
  */
 
 int main() {
+  // exiting = false;
+  // exit_val = 0;
+
   char **line;
+  *line = malloc(DEFAULT_BUFFER_SIZE * sizeof(char));
   size_t size = DEFAULT_BUFFER_SIZE * sizeof(char);
-  line = (char **)malloc(sizeof(char *));
-  *line = (char *)malloc(size);
+  // line = (char **)malloc(sizeof(char *));
+  // *line = (char *)malloc(size);
 
   while (1) {
     size_t result = getinput(line, &size);
@@ -55,30 +62,9 @@ int main() {
 ssize_t getinput(char **line, size_t *size) {
   printf("%% ");
   fflush(stdout);
-  if (line == NULL) {
-    line = malloc(DEFAULT_BUFFER_SIZE * sizeof(char));
-    *size = DEFAULT_BUFFER_SIZE;
-  }
+  ssize_t chars_read = getline(line, size, stdin);
 
-  int buffer_size = *size;
-  int c;
-  char *tmp = *line;
-  int index = 0;
-  // Read in chars from stdin, once the chars exceed
-  while ((c = getc(stdin)) != '\n' && c != EOF) {
-    if (index > buffer_size - 2) {
-      buffer_size += 1;
-      if ((realloc(*line, buffer_size)) == NULL) {
-        fprintf(stderr, "failure\n");
-        exit(1);
-      }
-    }
-    *tmp++ = (char)c;
-    index++;
-  }
-  *tmp = '\0';
-
-  return buffer_size;
+  return chars_read;
 }
 
 /* processline
