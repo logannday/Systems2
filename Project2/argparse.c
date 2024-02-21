@@ -53,7 +53,7 @@ char **argparse(char *line, int *argcp) {
   *argcp = argCount(line);
   // Todo: free this
   // Initialize all pointers to null
-  char **strings = (char**)calloc(*argcp, sizeof(char*));
+  char **strings = (char**)calloc(*argcp + 1, sizeof(char*));
   char *tmp = line;
   for (int i = 0; i < *argcp; i++) {
     // Maybe don't hardcode this

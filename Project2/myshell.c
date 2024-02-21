@@ -43,7 +43,7 @@ int main() {
   }
 
   free(*line);
-  free(line);
+  // free(line);
   return EXIT_SUCCESS;
 }
 
