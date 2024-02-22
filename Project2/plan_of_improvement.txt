@@ -2,5 +2,29 @@ Plan of Improvement
 -------------------
 
 Luke Myers Critiques:
+ls:
 1. Add comments describing functionality of builtins throughout the code
-2. 
+2. Initialize pointers to NULL
+3. Remove assignments from conditional expressions 
+4. Assign buffer before conditional, then check if the operation worked in conditional
+
+cp:
+5. Move assignments out of conditionals
+6. Dynamically allocate large buffers
+7. Assign bytes read outside conditional
+
+env:
+Must have forgotton to paste this function in the  in progress functions
+
+Sophia Mesquita Critique
+1. I like strcmp() == 0, I think that's more explicit that !strcmp
+2. Implement arg checking for env
+
+Hidemi Critique
+1. Fix longformat == operater
+2. Change syscalls to use perror
+3. Remove unused password call
+4. Free buffer if syscall fails
+5. Note, make sure cp is setting permissions correctly
+6. Check bytes written against bytes read when copying file
+7. Add missing curly brace
