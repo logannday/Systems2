@@ -15,8 +15,6 @@
 #include <stdbool.h>
 
 #define DEFAULT_BUFFER_SIZE 20
-// extern bool exiting;
-// extern int exit_val;
 /* PROTOTYPES */
 
 void processline(char *line);
@@ -30,20 +28,20 @@ ssize_t getinput(char **line, size_t *size);
 int main() {
   // exiting = false;
   // exit_val = 0;
+  extern bool exiting;
+  extern int exit_value;
 
-  char **line;
+  char **line = malloc(5 * sizeof(char*));
   *line = malloc(DEFAULT_BUFFER_SIZE * sizeof(char));
   size_t size = DEFAULT_BUFFER_SIZE * sizeof(char);
-  // line = (char **)malloc(sizeof(char *));
-  // *line = (char *)malloc(size);
 
-  while (1) {
+  while (!exiting) {
     size_t result = getinput(line, &size);
     processline(*line);
   }
 
   free(*line);
-  // free(line);
+  free(line);
   return EXIT_SUCCESS;
 }
 

@@ -4,8 +4,10 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <linux/limits.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,8 +15,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
-#define BUFFER_SIZE 128000
+#define BUFFER_SIZE 200
 
 // Prototypes
 static void exitProgram(char **args, int argcp);
@@ -23,7 +26,27 @@ static void pwd(char **args, int argcp);
 static void ls(char **args, int argcp);
 static void cp(char **args, int argcp);
 static void env(char **args, int argcp);
+static int print_long(char* fullpath, struct dirent *dirent);
 
+// Execute the system command in args
+void execute(char** args, int argcp) {
+  pid_t child_pid = 0;
+  char command[150];
+  if ((child_pid = fork()) == 0) {
+    // Create string of path 
+    sprintf(command, "%s%s", "/bin/", args[0]);
+
+    // execl the command, pass in pointer to args+1, make sure that the array is null terminated
+    if (execv(command, args) == -1) {
+      printf("Arg: |%s|\n", args[1]);
+      perror("failed to execute command\n");
+    }
+  } else {
+    // wait for child
+    child_pid = wait(NULL);
+  }
+
+}
 /* builtIn
  ** built in checks each built in command the given command, if the given
  *command matches one of the built in commands, that command is called and
@@ -33,33 +56,34 @@ static void env(char **args, int argcp);
 int builtIn(char **args, int argcp) {
   int result = 0;
   // write your code
-  for (int i = 0; i < argcp; i++) {
-    if (strcmp(args[i], "exit") == 0) {
+    if (strcmp(args[0], "exit") == 0) {
       exitProgram(args, argcp);
       result = 1;
-    } else if (strcmp(args[i], "pwd") == 0) {
+    } else if (strcmp(args[0], "pwd") == 0) {
       pwd(args, argcp);
       result = 1;
-    } else if (strcmp(args[i], "cd") == 0) {
+    } else if (strcmp(args[0], "cd") == 0) {
       cd(args, argcp);
       result = 1;
-    } else if (strcmp(args[i], "cp") == 0) {
+    } else if (strcmp(args[0], "cp") == 0) {
       cp(args, argcp);
       result = 1;
-    } else if (strcmp(args[i], "env") == 0) {
+    } else if (strcmp(args[0], "env") == 0) {
       env(args, argcp);
       result = 1;
-    } else if (strcmp(args[i], "ls") == 0) {
+    } else if (strcmp(args[0], "ls") == 0) {
       ls(args, argcp);
       result = 1;
+    } else {
+      execute(args, argcp);
     }
-  }
 
   return result;
 }
 
-// bool exiting;
-// int exit_value;
+// Global variables used to break while loop in main
+bool exiting;
+int exit_value;
 
 // TODO: Make sure everything gets freed before exit is called
 static void exitProgram(char **args, int argcp) {
@@ -69,15 +93,14 @@ static void exitProgram(char **args, int argcp) {
     exit_val = atoi(args[1]);
   }
 
-  // exiting = true;
-  // exit_value = exit_val;
-  exit(exit_val);
+  exiting = true;
+  exit_value = exit_val;
 }
 
 static void pwd(char **args, int argcp) {
   // printf("running pwd\n");
   char *buffer = malloc(PATH_MAX * sizeof(char));
-  char *path;
+  char *path = NULL;
   if ((path = getcwd(buffer, PATH_MAX)) == NULL) {
     fprintf(stderr, "failed to get wd\n");
   }
@@ -105,49 +128,108 @@ static void cd(char **args, int argcp) {
   printf("cd\n");
 }
 
-// TODO: implement -l
+// List information about current directory
 static void ls(char **args, int argcp) {
+  // Boolean for -l
   bool long_format = false;
+
+  // Handle command line arguments
   if (argcp >= 2) {
     if (strcmp(args[1], "-l") != 0) {
       fprintf(stderr, "usage: ls [-l]\n");
       return;
     }
-    long_format == true;
+    printf("|%s|", args[1]);
+    long_format = true;
   }
 
   int uid = getuid();
   struct passwd *password = getpwuid(uid);
 
-  char *buffer;
-  if ((buffer = malloc(PATH_MAX * sizeof(char))) == NULL) {
+  // Create buffer for path
+  char *current_path;
+  if ((current_path = malloc(PATH_MAX * sizeof(char))) == NULL) {
     fprintf(stderr, "Malloc failed\n");
     exit(-1);
   }
 
-  char *path;
-  if ((path = getcwd(buffer, PATH_MAX)) == NULL) {
+  // Populate path
+  char *path = NULL;
+  if ((path = getcwd(current_path, PATH_MAX)) == NULL) {
     fprintf(stderr, "failed to get wd\n");
     exit(-1);
   }
 
-  DIR *dir;
+  // Open directory
+  DIR *dir = NULL;
   if ((dir = opendir(path)) == NULL) {
     fprintf(stderr, "failed to open dir\n");
     exit(-1);
   }
 
-  struct dirent *dirent;
+  // loop through directory entries and print contents
+  struct dirent *dirent = NULL;
   while ((dirent = readdir(dir)) != NULL) {
-    printf("%s\n", dirent->d_name);
-    // use lstat to grab info
+    if (long_format) {
+      print_long(path, dirent);
+    } else {
+      printf("%s\n", dirent->d_name);
+    }
   }
-  closedir(dir);
-
-  free(buffer);
+  free(current_path);
 }
 
-// TODO: Make sure to copy permissions as well!!
+// Print the long version of dirent for ls
+static int print_long(char* path, struct dirent *dirent) {
+  char *fullpath = malloc(BUFFER_SIZE);
+  struct stat statp;
+  sprintf(fullpath, "%s%s%s", path, "/", dirent->d_name);
+  stat(path, &statp);
+  // printf("%s\n", fullpath);
+
+  // File permissions
+  printf((S_ISDIR(statp.st_mode)) ? "d" : "-");
+  printf((statp.st_mode & S_IRUSR) ? "r" : "-");
+  printf((statp.st_mode & S_IWUSR) ? "w" : "-");
+  printf((statp.st_mode & S_IXUSR) ? "x" : "-");
+  printf((statp.st_mode & S_IRGRP) ? "r" : "-");
+  printf((statp.st_mode & S_IWGRP) ? "w" : "-");
+  printf((statp.st_mode & S_IXGRP) ? "x" : "-");
+  printf((statp.st_mode & S_IROTH) ? "r" : "-");
+  printf((statp.st_mode & S_IWOTH) ? "w" : "-");
+  printf((statp.st_mode & S_IXOTH) ? "x" : "-");
+
+  // Number of links
+  printf(" %2ld", (long)statp.st_nlink);
+
+  // Owner name
+  struct passwd *pw = getpwuid(statp.st_uid);
+  if (pw != NULL)
+    printf(" %s", pw->pw_name);
+  else
+    printf(" %d", statp.st_uid);
+
+  // Populate group struct
+  struct group *gr = getgrgid(statp.st_gid);
+  if (gr != NULL)
+    printf(" %s", gr->gr_name);
+  else
+    printf(" %d", statp.st_gid);
+
+  // File size
+  printf(" %5ld", (long)statp.st_size);
+
+  // Last modified time
+  char timebuf[80];
+  strftime(timebuf, sizeof(timebuf), "%b %d %H:%M", localtime(&statp.st_mtime));
+  printf(" %s", timebuf);
+
+  printf("\n");
+  free(fullpath);
+  return 0;
+}
+
+// Copty the contentx of source file to destination
 static void cp(char **args, int argcp) {
   struct stat fs;
   int r;
@@ -156,7 +238,8 @@ static void cp(char **args, int argcp) {
     printf("Usage: cp  <src_file_name target_file_name>\n");
   }
 
-  // printf("%s %s\n", args[1], args[2]);
+  
+  // Populate stat with file permissions
   r = stat(args[1], &fs);
   struct stat file_stat;
   if (stat(args[1], &file_stat) == -1) {
@@ -164,13 +247,14 @@ static void cp(char **args, int argcp) {
     return;
   }
 
+  // Open original file
   int input_fd = open(args[1], O_RDONLY);
   if (input_fd == -1) {
     perror("Error creating new file");
     return;
   }
 
-  //Open the new file with the same permissions
+  // Open the new file with the same permissions
   int output_fd = open(args[2], O_CREAT | O_WRONLY | O_TRUNC);
   if (output_fd == -1) {
     perror("Error creating new file");
@@ -183,7 +267,8 @@ static void cp(char **args, int argcp) {
     return;
   }
 
-  char* buffer = malloc(BUFFER_SIZE * sizeof(char));
+  // Copy the contents of input buffer to output buffer
+  char *buffer = malloc(BUFFER_SIZE * sizeof(char));
   while (read(input_fd, buffer, BUFFER_SIZE) > 0) {
     int bytes_written = write(output_fd, buffer, BUFFER_SIZE);
     if (bytes_written == -1) {
@@ -194,13 +279,11 @@ static void cp(char **args, int argcp) {
   // Close the new file
   close(output_fd);
   close(input_fd);
-
-
 }
 
 // Print all environment variables, or set with: env [KEY=Value]
 static void env(char **args, int argcp) {
-
+  // Change environment variable
   if (argcp == 2) {
     if (putenv(args[1]) != 0) {
       fprintf(stderr, "Failure to modify environment variable\n");
@@ -208,6 +291,7 @@ static void env(char **args, int argcp) {
     }
   }
 
+  // Print all env variables
   extern char **environ;
   char **tmp = environ;
   while (*tmp != NULL) {

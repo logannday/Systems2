@@ -1,0 +1,6 @@
+Plan of Improvement
+-------------------
+
+Luke Myers Critiques:
+1. Add comments describing functionality of builtins throughout the code
+2. 
