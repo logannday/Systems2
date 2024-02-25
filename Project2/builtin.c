@@ -117,15 +117,14 @@ static void cd(char **args, int argcp) {
   // Use getenv to find
   if (argcp < 2) {
     if (chdir(home) == -1) {
-      fprintf(stderr, "invalid path\n");
+      perror("invalid path\n");
     }
     return;
   }
 
   if (chdir(args[1]) == -1) {
-    fprintf(stderr, "invalid path\n");
+      perror("invalid path\n");
   }
-  printf("cd\n");
 }
 
 // List information about current directory
@@ -158,11 +157,12 @@ static void ls(char **args, int argcp) {
     return;
   }
 
+  free(current_path);
+
   // Open directory
   DIR *dir = opendir(path);
   if (dir == NULL) {
     perror("Opendir failed");
-    free(current_path);
     return;
   }
 
@@ -176,7 +176,7 @@ static void ls(char **args, int argcp) {
     }
     dirent = readdir(dir);
   }
-  free(current_path);
+  free(dir);
 }
 
 // Print the long version of dirent for ls
@@ -255,14 +255,14 @@ static void cp(char **args, int argcp) {
     return;
   }
 
-  // Open the new file with the same permissions
+  // Open the new file
   int output_fd = open(args[2], O_CREAT | O_WRONLY | O_TRUNC);
   if (output_fd == -1) {
     perror("Error creating new file");
     return;
   }
 
-  // Set the permissions of the new file
+  // Set the permissions of the new file to match the old
   if (fchmod(output_fd, file_stat.st_mode) == -1) {
     perror("Error setting file permissions");
     return;
@@ -272,7 +272,7 @@ static void cp(char **args, int argcp) {
   char *buffer = malloc(BUFFER_SIZE * sizeof(char));
   int bytes_read = read(input_fd, buffer, BUFFER_SIZE);
   while (bytes_read > 0) {
-    int bytes_written = write(output_fd, buffer, BUFFER_SIZE);
+    int bytes_written = write(output_fd, buffer, bytes_read);
     if (bytes_written < bytes_read) {
       perror("failed to write to output file\n");
       return;

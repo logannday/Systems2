@@ -1,4 +1,5 @@
 /* CS 347 -- Mini Shell!
+ *
  * Original author Phil Nelson 2000
  */
 #include "argparse.h"
@@ -15,8 +16,8 @@
 #include <stdbool.h>
 
 #define DEFAULT_BUFFER_SIZE 20
-/* PROTOTYPES */
 
+/* PROTOTYPES */
 void processline(char *line);
 ssize_t getinput(char **line, size_t *size);
 
@@ -24,17 +25,16 @@ ssize_t getinput(char **line, size_t *size);
  * This function is the main entry point to the program.  This is essentially
  * the primary read-eval-print loop of the command interpreter.
  */
-
 int main() {
-  // exiting = false;
-  // exit_val = 0;
-  extern bool exiting;
+  extern bool exiting;          // Variables declared in builtins.c, called by exit()
   extern int exit_value;
 
+  // Initialize line used to get input
   char **line = malloc(5 * sizeof(char*));
   *line = malloc(DEFAULT_BUFFER_SIZE * sizeof(char));
   size_t size = DEFAULT_BUFFER_SIZE * sizeof(char);
 
+  // Process commands until exit() is run
   while (!exiting) {
     size_t result = getinput(line, &size);
     processline(*line);
@@ -74,25 +74,16 @@ ssize_t getinput(char **line, size_t *size) {
  * to run a built in command
  */
 void processline(char *line) {
-  /*check whether line is empty*/
-  // write your code
-
   pid_t cpid;
   int status;
   int argCount;
   char **arguments = argparse(line, &argCount);
-  // printf("argcount: %d\n", argCount);
-  for (int i = 0; i < argCount; i++) {
-    // printf("arg %d: %s\n", i, arguments[i]);
-  }
 
   builtIn(arguments, argCount);
 
-  // Free all of the strings in the array, then the array
+  // Free all of the strings in the array, then the array itself
   for (int i = 0; i < argCount; i++) {
-    // printf("arguments[%d]: |%s|\n", i, arguments[i]);
     free(arguments[i]);
   }
-
   free(arguments);
 }

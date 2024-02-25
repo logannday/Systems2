@@ -28,7 +28,8 @@ static int argCount(char *line) {
 
   size_t i = 0;
   char c = '\0';
-  while(line != NULL && (c = line[i++]) != '\0') {
+  c = line[i++];
+  while(line != NULL && c != '\0') {
     // Count words from the beginning
     if (!isspace(c) && in_whitespace) {
       count++;
@@ -36,7 +37,7 @@ static int argCount(char *line) {
     } else if (isspace(c)) {
       in_whitespace = true;
     }
-    // tmp++;
+    c = line[i++];
   }
 
   return count;
@@ -49,15 +50,16 @@ static int argCount(char *line) {
  * The count of how many arguments there are is saved in the argcp pointer
  */
 char **argparse(char *line, int *argcp) {
-  // Iterate through the string
   *argcp = argCount(line);
-  // Todo: free this
+
   // Initialize all pointers to null
   char **strings = (char**)calloc(*argcp + 1, sizeof(char*));
   char *tmp = line;
+
   for (int i = 0; i < *argcp; i++) {
     // Maybe don't hardcode this
     strings[i] = malloc(30 * sizeof(char));
+
     // Skip to first character of word
     while(isspace(*tmp)) {
       tmp++;
