@@ -20,7 +20,7 @@
 /* PROTOTYPES */
 void processline(char *line);
 ssize_t getinput(char **line, size_t *size);
-
+void execute(char **args, int argcp); 
 /* main
  * This function is the main entry point to the program.  This is essentially
  * the primary read-eval-print loop of the command interpreter.
@@ -65,6 +65,25 @@ ssize_t getinput(char **line, size_t *size) {
   return chars_read;
 }
 
+void execute(char **args, int argcp) {
+  pid_t child_pid = 0;
+  char command[150];
+  if ((child_pid = fork()) == 0) {
+    // Create string of path
+    sprintf(command, "%s%s", "/bin/", args[0]);
+
+    // execl the command, pass in pointer to args+1, make sure that the array is
+    // null terminated
+    if (execv(command, args) == -1) {
+      printf("Arg: |%s|\n", args[1]);
+      perror("failed to execute command\n");
+    }
+  } else {
+    // wait for child
+    child_pid = wait(NULL);
+  }
+}
+
 /* processline
  * The parameter line is interpreted as a command name.  This function creates a
  * new process that executes that command.
@@ -79,7 +98,12 @@ void processline(char *line) {
   int argCount;
   char **arguments = argparse(line, &argCount);
 
-  builtIn(arguments, argCount);
+  int ran_builtin = builtIn(arguments, argCount);
+  int command_length = strlen(*arguments);
+
+  if (ran_builtin == 0 && command_length != 0) {
+    execute(arguments, argCount);
+  }
 
   // Free all of the strings in the array, then the array itself
   for (int i = 0; i < argCount; i++) {

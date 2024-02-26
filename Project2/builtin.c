@@ -17,7 +17,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-#define BUFFER_SIZE 200
+#define BUFFER_SIZE 400
 
 // Prototypes
 static void exitProgram(char **args, int argcp);
@@ -28,25 +28,6 @@ static void cp(char **args, int argcp);
 static void env(char **args, int argcp);
 static int print_long(char *fullpath, struct dirent *dirent);
 
-// Execute the system command in args
-void execute(char **args, int argcp) {
-  pid_t child_pid = 0;
-  char command[150];
-  if ((child_pid = fork()) == 0) {
-    // Create string of path
-    sprintf(command, "%s%s", "/bin/", args[0]);
-
-    // execl the command, pass in pointer to args+1, make sure that the array is
-    // null terminated
-    if (execv(command, args) == -1) {
-      printf("Arg: |%s|\n", args[1]);
-      perror("failed to execute command\n");
-    }
-  } else {
-    // wait for child
-    child_pid = wait(NULL);
-  }
-}
 /* builtIn
  ** built in checks each built in command the given command, if the given
  *command matches one of the built in commands, that command is called and
@@ -75,7 +56,7 @@ int builtIn(char **args, int argcp) {
     ls(args, argcp);
     result = 1;
   } else {
-    execute(args, argcp);
+    result = 0;
   }
 
   return result;
@@ -97,21 +78,28 @@ static void exitProgram(char **args, int argcp) {
   exit_value = exit_val;
 }
 
+// Print the path of the current working directory
 static void pwd(char **args, int argcp) {
-  // printf("running pwd\n");
   char *buffer = malloc(PATH_MAX * sizeof(char));
-  char *path = NULL;
-  if ((path = getcwd(buffer, PATH_MAX)) == NULL) {
-    fprintf(stderr, "failed to get wd\n");
+
+  char *path = getcwd(buffer, PATH_MAX);
+  if (path == NULL) {
+    perror("failed to get wd\n");
   }
+
   printf("%s\n", path);
 
   free(buffer);
 }
 
+// Change directory
 static void cd(char **args, int argcp) {
   int uid = getuid();
   struct passwd *password = getpwuid(uid);
+  if (password == NULL) {
+    perror("failed to get home directory");
+    return;
+  }
   const char *home = password->pw_dir;
 
   // Use getenv to find
@@ -123,7 +111,7 @@ static void cd(char **args, int argcp) {
   }
 
   if (chdir(args[1]) == -1) {
-      perror("invalid path\n");
+    perror("invalid path\n");
   }
 }
 
@@ -142,8 +130,8 @@ static void ls(char **args, int argcp) {
   }
 
   // Create buffer for path
-  char *current_path;
-  if ((current_path = malloc(PATH_MAX * sizeof(char))) == NULL) {
+  char *current_path = malloc(PATH_MAX * sizeof(char));
+  if (current_path == NULL) {
     perror("Malloc failed");
     free(current_path);
     return;
@@ -157,12 +145,11 @@ static void ls(char **args, int argcp) {
     return;
   }
 
-  free(current_path);
-
   // Open directory
   DIR *dir = opendir(path);
   if (dir == NULL) {
     perror("Opendir failed");
+    free(current_path);
     return;
   }
 
@@ -170,25 +157,34 @@ static void ls(char **args, int argcp) {
   struct dirent *dirent = readdir(dir);
   while (dirent != NULL) {
     if (long_format) {
-      print_long(path, dirent);
-    } else {
-      printf("%s\n", dirent->d_name);
-    }
+      print_long(current_path, dirent);
+    } 
+    printf(" %s\n", dirent->d_name);
+
     dirent = readdir(dir);
   }
-  free(dir);
+
+  closedir(dir);
+  free(current_path);
 }
 
 // Print the long version of dirent for ls
+// returns -1 on error
 static int print_long(char *path, struct dirent *dirent) {
-  char *fullpath = malloc(BUFFER_SIZE);
+  char *fullpath = calloc(1, BUFFER_SIZE);
   struct stat statp;
   sprintf(fullpath, "%s%s%s", path, "/", dirent->d_name);
-  stat(path, &statp);
-  // printf("%s\n", fullpath);
+
+  int stat_result = stat(fullpath, &statp);
+
+  if (stat_result == -1) {
+    perror("stat call failed\n");
+    free(fullpath);
+    return -1;
+  }
 
   // File permissions
-  printf((S_ISDIR(statp.st_mode)) ? "d" : "-");
+  printf((statp.st_mode & S_IFDIR) ? "d" : "-");
   printf((statp.st_mode & S_IRUSR) ? "r" : "-");
   printf((statp.st_mode & S_IWUSR) ? "w" : "-");
   printf((statp.st_mode & S_IXUSR) ? "x" : "-");
@@ -211,10 +207,9 @@ static int print_long(char *path, struct dirent *dirent) {
 
   // Populate group struct
   struct group *gr = getgrgid(statp.st_gid);
-  if (gr != NULL)
+  if (gr != NULL) {
     printf(" %s", gr->gr_name);
-  else
-    printf(" %d", statp.st_gid);
+  }
 
   // File size
   printf(" %5ld", (long)statp.st_size);
@@ -224,7 +219,6 @@ static int print_long(char *path, struct dirent *dirent) {
   strftime(timebuf, sizeof(timebuf), "%b %d %H:%M", localtime(&statp.st_mtime));
   printf(" %s", timebuf);
 
-  printf("\n");
   free(fullpath);
   return 0;
 }
@@ -291,17 +285,17 @@ static void env(char **args, int argcp) {
   // Change environment variable if argument added
   if (argcp == 2) {
     if (putenv(args[1]) != 0) {
-      fprintf(stderr, "Failure to modify environment variable\n");
-      fprintf(stderr, "Usage = env [KEY=Value]\n");
+      perror("Failure to modify environment variable\n");
+      printf("Usage = env [KEY=Value]\n");
       return;
     }
   }
 
   // Print all env variables, iterate through using env_index pointer
   extern char **environ;
-  char **env_index = environ;
-  while (*env_index != NULL) {
-    printf("%s\n", *env_index);
-    env_index++;
+  char **var_index = environ;
+  while (*var_index != NULL) {
+    printf("%s\n", *var_index);
+    var_index++;
   }
 }
