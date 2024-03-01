@@ -110,7 +110,7 @@ void write_image(PPMPixel *image, char *filename, unsigned long int width, unsig
 PPMPixel *read_image(const char *filename, unsigned long int *width, unsigned long int *height)
 {
 
-    PPMPixel *img;
+    PPMPixel *img = NULL;
 
     // Open the image file
     FILE *fp = fopen(filename, "r");
@@ -151,10 +151,10 @@ PPMPixel *read_image(const char *filename, unsigned long int *width, unsigned lo
 
     // Read in width and height
     char * rest = line;
-    char * w = strtok_r(line, " ", &rest);
-    char * h = strtok_r(NULL, " ", &rest);
-    *width = atoi(w);
-    *height = atoi(h);
+    unsigned long w = atoi(strtok_r(line, " ", &rest));
+    unsigned long h = atoi(strtok_r(NULL, " ", &rest));
+    *width = w;
+    *height = h;
 
     if (*width == 0 || *height == 0) {
         fprintf(stderr, "failed to parse width and height");
@@ -163,7 +163,21 @@ PPMPixel *read_image(const char *filename, unsigned long int *width, unsigned lo
 
     printf("width: %lu height: %lu\n", *width, *height);
 
+    fgets(line, buf_size, fp);
+    if (atoi(line) < 255) {
+        fprintf(stderr, "max color value lower than 255");
+    }
 
+    img = malloc(sizeof(struct PPMPixel));
+    int bytes_read = fread(img, sizeof(struct PPMPixel), 1, fp);
+    if (bytes_read == 0) {
+        perror("Failed to read data into PPMPixel with:");
+        exit(EXIT_FAILURE);
+    } else {
+        printf("bytes read: %d\n", bytes_read);
+    }
+
+    free(line);
     return img;
 }
 
@@ -195,19 +209,10 @@ int main(int argc, char *argv[])
     }
 
     for (int i = 1; i < argc; i++) {
-        unsigned long width = 0;
-        unsigned long height = 0;
+        struct parameter param;
 
         printf("Image file name: %s\n", argv[i]);
-        PPMPixel *pixel = read_image(argv[i], &width, &height);
-
-
-        // FILE *fp = fopen(argv[i], "r");
-        // if (fp == NULL) {
-        //     perror("Failed to open image file with");
-        //     exit(EXIT_FAILURE);
-        // }
-
+        param.image = read_image(argv[i], &param.w, &param.h);
     }
 
     
