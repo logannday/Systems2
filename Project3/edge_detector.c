@@ -111,7 +111,58 @@ PPMPixel *read_image(const char *filename, unsigned long int *width, unsigned lo
 {
 
     PPMPixel *img;
+
+    // Open the image file
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) {
+        perror("Failed to open image file with");
+        exit(EXIT_FAILURE);
+    }
     
+    // Check the format is p6
+    size_t buf_size = 100;
+    char *line = malloc(buf_size * sizeof(char));
+    if (line == NULL) {
+        perror("failed call to malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    fgets(line, buf_size, fp);
+
+    // Skip comments
+    while(strchr(line, '#') != NULL) {
+        fgets(line, buf_size, fp);
+        printf("skipping comment");
+    }
+
+    // Compare the first non comment argument to P6
+    if (strcmp(line, "P6\n") != 0) {
+        fprintf(stderr, "image format is not P6");
+        exit(EXIT_FAILURE);
+    }
+
+    fgets(line, buf_size, fp);
+    
+    // Skip comments
+    while(strchr(line, '#') != NULL) {
+        fgets(line, buf_size, fp);
+        // printf("skipping comment");
+    }
+
+    // Read in width and height
+    char * rest = line;
+    char * w = strtok_r(line, " ", &rest);
+    char * h = strtok_r(NULL, " ", &rest);
+    *width = atoi(w);
+    *height = atoi(h);
+
+    if (*width == 0 || *height == 0) {
+        fprintf(stderr, "failed to parse width and height");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("width: %lu height: %lu\n", *width, *height);
+
 
     return img;
 }
@@ -120,11 +171,14 @@ PPMPixel *read_image(const char *filename, unsigned long int *width, unsigned lo
  Read an image file that is passed as an argument at runtime. 
  Apply the Laplacian filter. 
  Update the value of total_elapsed_time.
- Save the result image in a file called laplaciani.ppm, where i is the image file order in the passed arguments.
- Example: the result image of the file passed third during the input shall be called "laplacian3.ppm".
+ Save the result image in a file called laplaciani.ppm, 
+     where i is the image file order in the passed arguments.
+ Example: the result image of the file passed third during the input 
+     shall be called "laplacian3.ppm".
 
 */
-void *manage_image_file(void *args){
+void *manage_image_file(void *args) 
+{
  
     
 }
@@ -135,7 +189,26 @@ void *manage_image_file(void *args){
  */
 int main(int argc, char *argv[])
 {
-   
+    if (argc < 2) {
+        fprintf(stderr, "Less than two arguments");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 1; i < argc; i++) {
+        unsigned long width = 0;
+        unsigned long height = 0;
+
+        printf("Image file name: %s\n", argv[i]);
+        PPMPixel *pixel = read_image(argv[i], &width, &height);
+
+
+        // FILE *fp = fopen(argv[i], "r");
+        // if (fp == NULL) {
+        //     perror("Failed to open image file with");
+        //     exit(EXIT_FAILURE);
+        // }
+
+    }
 
     
     return 0;
