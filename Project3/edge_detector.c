@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <string.h>
 
-#define LAPLACIAN_THREADS 4     //change the number of threads as you run your concurrency experiment
+#define LAPLACIAN_THREADS 4     // change the number of threads as you run your concurrency experiment
 
 /* Laplacian filter is 3 by 3 */
 #define FILTER_WIDTH 3       
@@ -168,15 +168,21 @@ PPMPixel *read_image(const char *filename, unsigned long int *width, unsigned lo
         fprintf(stderr, "max color value lower than 255");
     }
 
-    img = malloc(sizeof(struct PPMPixel));
-    int bytes_read = fread(img, sizeof(struct PPMPixel), 1, fp);
+    img = calloc(sizeof(PPMPixel), w * h);
+    if (img == NULL) {
+        perror("failed call to malloc");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Read the pixel data
+    int bytes_read = fread(img, sizeof(PPMPixel), w * h, fp); 
     if (bytes_read == 0) {
-        perror("Failed to read data into PPMPixel with:");
+        perror("failed to read in image");
         exit(EXIT_FAILURE);
     } else {
         printf("bytes read: %d\n", bytes_read);
     }
-
+    
     free(line);
     return img;
 }
@@ -216,6 +222,7 @@ int main(int argc, char *argv[])
     }
 
     
+    //TODO: Free the struct params
     return 0;
 }
 
