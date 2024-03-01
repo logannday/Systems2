@@ -199,7 +199,12 @@ PPMPixel *read_image(const char *filename, unsigned long int *width, unsigned lo
 */
 void *manage_image_file(void *args) 
 {
+    printf("thread spawned, args: %s\n", args);
  
+        struct parameter param;
+
+        printf("Image file name: %s\n", args);
+        param.image = read_image(args, &param.w, &param.h);
     
 }
 /*The driver of the program. Check for the correct number of arguments. If wrong print the message: "Usage ./a.out filename[s]"
@@ -214,11 +219,16 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    for (int i = 1; i < argc; i++) {
-        struct parameter param;
+    // Initialize array of threads
+    pthread_t *threads =  calloc(argc - 1, sizeof(pthread_t));
 
-        printf("Image file name: %s\n", argv[i]);
-        param.image = read_image(argv[i], &param.w, &param.h);
+    for (int i = 1; i < argc; i++) {
+        pthread_create(&threads[i], NULL, manage_image_file, argv[i]);
+    }
+
+    void * res = NULL;
+    for (int i = 1; i < argc; i++) {
+        pthread_join(threads[i], &res);
     }
 
     
