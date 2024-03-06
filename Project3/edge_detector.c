@@ -54,8 +54,11 @@ void *compute_laplacian_threadfn(void *params) {
       {-1, -1, -1}, {-1, 8, -1}, {-1, -1, -1}};
 
   int red, green, blue;
-  struct parameter *param_lad = (struct parameter*) params;
-  printf("start: %lu size: %lu\n", param_lad->start, param_lad->size);
+  struct parameter *parameters = (struct parameter*) params;
+  printf("start: %lu size: %lu\n", parameters->start, parameters->size);
+  // TODO: modify the original pointer to the pixel data?
+
+  
 
   return NULL;
 }
@@ -81,24 +84,31 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
 
   int section_size = h / LAPLACIAN_THREADS;
   // create a struct parameter for each thread and pass it to pthreat_create with compute_laplacian_threadfn, each thread gets its owns sectionsize sized section
+
+  // Allocate all parameter structs to be passed in to the functions
+  struct parameter *params = malloc(LAPLACIAN_THREADS * sizeof(struct parameter));
+
   for (int i = 0; i < LAPLACIAN_THREADS; i++) {
-    struct parameter *params = malloc(sizeof(struct parameter));
-    params->image = image;
-    params->w = w;
-    params->h = h;
-    params->start = i * section_size;
+    // TODO: Memory leak, free the struct
+    // struct parameter *params = malloc(sizeof(struct parameter));
+    params[i].image = image;
+    params[i].w = w;
+    params[i].h = h;
+    params[i].start = i * section_size;
     if (i == LAPLACIAN_THREADS - 1) {
-      params->size = h - (i * section_size);
+      params[i].size = h - (i * section_size);
     } else {
-      params->size = section_size;
+      params[i].size = section_size;
     }
-    pthread_create(&threads[i], NULL, compute_laplacian_threadfn, params);
+    pthread_create(&threads[i], NULL, compute_laplacian_threadfn, &params[i]);
   }
 
   void *res = NULL;
   for (int i = 0; i < LAPLACIAN_THREADS; i++) {
     pthread_join(threads[i], &res);
   }
+
+  free(params);
 
   return result;
 }
