@@ -77,7 +77,10 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   pthread_t *threads = calloc(LAPLACIAN_THREADS, sizeof(pthread_t));
 
   // Split the image into height/ Numthreads chunks
-  int section_size = (w * h) / LAPLACIAN_THREADS;
+  // TODO: Fix this so it divides the work by rows
+
+  int section_size = h / LAPLACIAN_THREADS;
+  // create a struct parameter for each thread and pass it to pthreat_create with compute_laplacian_threadfn, each thread gets its owns sectionsize sized section
   for (int i = 0; i < LAPLACIAN_THREADS; i++) {
     struct parameter *params = malloc(sizeof(struct parameter));
     params->image = image;
@@ -85,9 +88,9 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
     params->h = h;
     params->start = i * section_size;
     if (i == LAPLACIAN_THREADS - 1) {
-      params->size = (w * h) - (i * section_size);
+      params->size = h - (i * section_size);
     } else {
-      params->size = (w * h) / LAPLACIAN_THREADS;
+      params->size = section_size;
     }
     pthread_create(&threads[i], NULL, compute_laplacian_threadfn, params);
   }
