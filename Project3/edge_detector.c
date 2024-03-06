@@ -5,8 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define LAPLACIAN_THREADS                                                      \
-  4 // change the number of threads as you run your concurrency experiment
+#define LAPLACIAN_THREADS 4
 
 /* Laplacian filter is 3 by 3 */
 #define FILTER_WIDTH 3
@@ -56,7 +55,7 @@ void *compute_laplacian_threadfn(void *params) {
 
   int red, green, blue;
   struct parameter *param_lad = (struct parameter*) params;
-  printf("start: %lu size: %lu", param_lad->start, param_lad->size);
+  printf("start: %lu size: %lu\n", param_lad->start, param_lad->size);
 
   return NULL;
 }
@@ -69,6 +68,7 @@ void *compute_laplacian_threadfn(void *params) {
  */
 PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
                         double *elapsedTime) {
+  printf("applying filters\n");
   // Get the start time
 
   // Array of pixels to output
@@ -78,7 +78,7 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
 
   // Split the image into height/ Numthreads chunks
   int section_size = (w * h) / LAPLACIAN_THREADS;
-  for (int i = 0; i < LAPLACIAN_THREADS - 1; i++) {
+  for (int i = 0; i < LAPLACIAN_THREADS; i++) {
     struct parameter *params = malloc(sizeof(struct parameter));
     params->image = image;
     params->w = w;
@@ -215,15 +215,14 @@ PPMPixel *read_image(const char *filename, unsigned long int *width,
      where i is the image file order in the passed arguments.
  Example: the result image of the file passed third during the input
      shall be called "laplacian3.ppm".
-
 */
 void *manage_image_file(void *args) {
-  printf("thread spawned, args: %s\n", args);
+  printf("thread spawned, args: %s\n", (char*) args);
 
-  struct parameter param;
+  unsigned long int w, h;
+  PPMPixel *original_image = read_image(args, &w, &h);
 
-  printf("Image file name: %s\n", args);
-  param.image = read_image(args, &param.w, &param.h);
+  PPMPixel *result = apply_filters(original_image, w, h, &total_elapsed_time);
 }
 
 /*The driver of the program. Check for the correct number of arguments. If wrong
