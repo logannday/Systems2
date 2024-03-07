@@ -35,6 +35,8 @@ struct file_name_args {
 /*The total_elapsed_time is the total time taken by all threads
 to compute the edge detection of all input images .
 */
+pthread_mutex_t time_mutex;
+// pthread_mutex_init(&time_mutex, NULL);
 double total_elapsed_time = 0;
 
 /*This is the thread function. It will compute the new values for the region of
@@ -54,11 +56,8 @@ void *compute_laplacian_threadfn(void *params) {
       {-1, -1, -1}, {-1, 8, -1}, {-1, -1, -1}};
 
   int red, green, blue;
-  struct parameter *parameters = (struct parameter*) params;
+  struct parameter *parameters = (struct parameter *)params;
   printf("start: %lu size: %lu\n", parameters->start, parameters->size);
-  // TODO: modify the original pointer to the pixel data?
-
-  
 
   return NULL;
 }
@@ -72,10 +71,14 @@ void *compute_laplacian_threadfn(void *params) {
 PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
                         double *elapsedTime) {
   printf("applying filters\n");
+
   // Get the start time
+  struct timeval start_time;
+  gettimeofday(&start_time, NULL);
 
   // Array of pixels to output
-  PPMPixel *result;
+  PPMPixel *result = malloc(sizeof(PPMPixel));
+
   // Initialize array of threads
   pthread_t *threads = calloc(LAPLACIAN_THREADS, sizeof(pthread_t));
 
@@ -83,10 +86,13 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   // TODO: Fix this so it divides the work by rows
 
   int section_size = h / LAPLACIAN_THREADS;
-  // create a struct parameter for each thread and pass it to pthreat_create with compute_laplacian_threadfn, each thread gets its owns sectionsize sized section
+  // create a struct parameter for each thread and pass it to pthreat_create
+  // with compute_laplacian_threadfn, each thread gets its owns sectionsize
+  // sized section
 
   // Allocate all parameter structs to be passed in to the functions
-  struct parameter *params = malloc(LAPLACIAN_THREADS * sizeof(struct parameter));
+  struct parameter *params =
+      malloc(LAPLACIAN_THREADS * sizeof(struct parameter));
 
   for (int i = 0; i < LAPLACIAN_THREADS; i++) {
     // TODO: Memory leak, free the struct
@@ -107,6 +113,12 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   for (int i = 0; i < LAPLACIAN_THREADS; i++) {
     pthread_join(threads[i], &res);
   }
+  //
+  // Get the start time
+  struct timeval end_time;
+  gettimeofday(&end_time, NULL);
+
+  // lock the mutex and incremnt total time
 
   free(params);
 
@@ -121,7 +133,24 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
  The name of the new file shall be "filename" (the second argument).
  */
 void write_image(PPMPixel *image, char *filename, unsigned long int width,
-                 unsigned long int height) {}
+                 unsigned long int height) {
+  FILE *fp = fopen(filename, "w");
+  if (fp == NULL) {
+    perror("Failed to open image file with");
+    exit(EXIT_FAILURE);
+  }
+
+  fprintf(fp, "P6\n%lu %lu\n%d\n", width, height, RGB_COMPONENT_COLOR);
+
+  // Read the pixel data
+  int bytes_written = fwrite(image, sizeof(PPMPixel), width * height, fp);
+  if (bytes_written == 0) {
+    perror("failed to read in image");
+    exit(EXIT_FAILURE);
+  } 
+
+
+}
 
 /* Open the filename image for reading, and parse it.
     Example of a ppm header:    //http://netpbm.sourceforge.net/doc/ppm.html
@@ -130,6 +159,7 @@ void write_image(PPMPixel *image, char *filename, unsigned long int width,
     ## another comment  -- any number of comment lines
     200 300             -- image width & height
     255                 -- max color value
+  
 
  Check if the image format is P6. If not, print invalid format error message.
  If there are comments in the file, skip them. You may assume that comments
@@ -212,9 +242,7 @@ PPMPixel *read_image(const char *filename, unsigned long int *width,
   if (bytes_read == 0) {
     perror("failed to read in image");
     exit(EXIT_FAILURE);
-  } else {
-    printf("bytes read: %d\n", bytes_read);
-  }
+  } 
 
   free(line);
   return img;
@@ -230,12 +258,15 @@ PPMPixel *read_image(const char *filename, unsigned long int *width,
      shall be called "laplacian3.ppm".
 */
 void *manage_image_file(void *args) {
-  printf("thread spawned, args: %s\n", (char*) args);
+  printf("thread spawned, args: %s\n", (char *)args);
 
   unsigned long int w, h;
   PPMPixel *original_image = read_image(args, &w, &h);
 
   PPMPixel *result = apply_filters(original_image, w, h, &total_elapsed_time);
+
+  write_image(original_image, "test.ppm", w, h);
+  return NULL;
 }
 
 /*The driver of the program. Check for the correct number of arguments. If wrong
