@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define LAPLACIAN_THREADS 4
+#define LAPLACIAN_THREADS 1
 
 /* Laplacian filter is 3 by 3 */
 #define FILTER_WIDTH 3
@@ -36,6 +36,7 @@ struct file_name_args {
 to compute the edge detection of all input images .
 */
 pthread_mutex_t time_mutex;
+// TODO: Initialize mutex in main
 // pthread_mutex_init(&time_mutex, NULL);
 double total_elapsed_time = 0;
 
@@ -48,7 +49,6 @@ double total_elapsed_time = 0;
     The results are summed together to yield a single output value that is
    placed in the output image at the location of the pixel being processed on
    the input.
-
  */
 void *compute_laplacian_threadfn(void *params) {
 
@@ -56,8 +56,34 @@ void *compute_laplacian_threadfn(void *params) {
       {-1, -1, -1}, {-1, 8, -1}, {-1, -1, -1}};
 
   int red, green, blue;
-  struct parameter *parameters = (struct parameter *)params;
-  printf("start: %lu size: %lu\n", parameters->start, parameters->size);
+  struct parameter *prm = (struct parameter *)params;
+  printf("start: %lu size: %lu\n", prm->start, prm->size);
+  printf("width: %lu height: %lu\n", prm->w, prm->h);
+
+  // Iterate over rows
+  for (int iteratorImageHeight = prm->start; prm->start + prm->size; iteratorImageHeight++) {
+    // Iterate over pixels in each row
+    for (int iteratorImageWidth = 0; iteratorImageWidth < prm->w; iteratorImageWidth++) {
+      // Iterate over filter
+      for (int iteratorFilterHeight = 0; iteratorFilterHeight < FILTER_HEIGHT; iteratorFilterHeight++) {
+        for (int iteratorFilterWidth = 0; iteratorFilterWidth < FILTER_WIDTH; iteratorFilterWidth++) {
+          unsigned long x_coordinate = ( iteratorImageWidth - FILTER_WIDTH / 2 + iteratorFilterWidth + prm->w) % prm->h;
+          printf("x: %lu\n", x_coordinate);
+
+          unsigned long y_coordinate = (iteratorImageHeight - FILTER_HEIGHT / 2 + iteratorFilterHeight + prm->w) % prm->h;
+          printf("y: %lu\n", y_coordinate);
+
+          // TODO: cap values at 255
+          red+= prm->image[y_coordinate * prm->w + x_coordinate].r * laplacian[iteratorFilterHeight][iteratorFilterWidth];
+          green+= prm->image[y_coordinate * prm->w + x_coordinate].g * laplacian[iteratorFilterHeight][iteratorFilterWidth];
+          blue+= prm->image[y_coordinate * prm->w + x_coordinate].b * laplacian[iteratorFilterHeight][iteratorFilterWidth];
+        }
+      }
+      prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].r = red;
+      prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].g = green;
+      prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].b = blue;
+    }
+  }
 
   return NULL;
 }
@@ -98,6 +124,7 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
     // TODO: Memory leak, free the struct
     // struct parameter *params = malloc(sizeof(struct parameter));
     params[i].image = image;
+    params[i].result = image;
     params[i].w = w;
     params[i].h = h;
     params[i].start = i * section_size;
@@ -147,9 +174,7 @@ void write_image(PPMPixel *image, char *filename, unsigned long int width,
   if (bytes_written == 0) {
     perror("failed to read in image");
     exit(EXIT_FAILURE);
-  } 
-
-
+  }
 }
 
 /* Open the filename image for reading, and parse it.
@@ -159,7 +184,7 @@ void write_image(PPMPixel *image, char *filename, unsigned long int width,
     ## another comment  -- any number of comment lines
     200 300             -- image width & height
     255                 -- max color value
-  
+
 
  Check if the image format is P6. If not, print invalid format error message.
  If there are comments in the file, skip them. You may assume that comments
@@ -242,7 +267,7 @@ PPMPixel *read_image(const char *filename, unsigned long int *width,
   if (bytes_read == 0) {
     perror("failed to read in image");
     exit(EXIT_FAILURE);
-  } 
+  }
 
   free(line);
   return img;
@@ -265,7 +290,8 @@ void *manage_image_file(void *args) {
 
   PPMPixel *result = apply_filters(original_image, w, h, &total_elapsed_time);
 
-  write_image(original_image, "test.ppm", w, h);
+  // TODO: switch this to result, handle the filename
+  write_image(result, "test.ppm", w, h);
   return NULL;
 }
 
