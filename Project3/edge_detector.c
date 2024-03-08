@@ -14,6 +14,11 @@
 #define RGB_COMPONENT_COLOR 255
 
 typedef struct {
+  char *filename;
+  int thread_no;
+} manage_args_t;
+
+typedef struct {
   unsigned char r, g, b;
 } PPMPixel;
 
@@ -67,24 +72,38 @@ void *compute_laplacian_threadfn(void *params) {
   struct parameter *prm = (struct parameter *)params;
 
   // Iterate over rows
-  for (int iteratorImageHeight = prm->start; iteratorImageHeight < prm->start + prm->size; iteratorImageHeight++) {
+  for (int iteratorImageHeight = prm->start;
+       iteratorImageHeight < prm->start + prm->size; iteratorImageHeight++) {
     // Iterate over pixels in each row
-    for (int iteratorImageWidth = 0; iteratorImageWidth < prm->w; iteratorImageWidth++) {
+    for (int iteratorImageWidth = 0; iteratorImageWidth < prm->w;
+         iteratorImageWidth++) {
 
-      red = 0; green = 0; blue = 0;
+      red = 0;
+      green = 0;
+      blue = 0;
 
       // Iterate over filter
-      for (int iteratorFilterHeight = 0; iteratorFilterHeight < FILTER_HEIGHT; iteratorFilterHeight++) {
-        for (int iteratorFilterWidth = 0; iteratorFilterWidth < FILTER_WIDTH; iteratorFilterWidth++) {
-          unsigned long x_coordinate = (iteratorImageWidth - FILTER_WIDTH / 2 + iteratorFilterWidth + prm->w) % prm->w;
+      for (int iteratorFilterHeight = 0; iteratorFilterHeight < FILTER_HEIGHT;
+           iteratorFilterHeight++) {
+        for (int iteratorFilterWidth = 0; iteratorFilterWidth < FILTER_WIDTH;
+             iteratorFilterWidth++) {
+          unsigned long x_coordinate = (iteratorImageWidth - FILTER_WIDTH / 2 +
+                                        iteratorFilterWidth + prm->w) %
+                                       prm->w;
 
-          unsigned long y_coordinate = (iteratorImageHeight - FILTER_HEIGHT / 2 + iteratorFilterHeight + prm->h) % prm->h;
+          unsigned long y_coordinate =
+              (iteratorImageHeight - FILTER_HEIGHT / 2 + iteratorFilterHeight +
+               prm->h) %
+              prm->h;
           // printf("x: %lu, y: %lu\n", x_coordinate, y_coordinate);
 
           // TODO: cap values at 255
-          red+= prm->image[y_coordinate * prm->w + x_coordinate].r * laplacian[iteratorFilterHeight][iteratorFilterWidth];
-          green+= prm->image[y_coordinate * prm->w + x_coordinate].g * laplacian[iteratorFilterHeight][iteratorFilterWidth];
-          blue+= prm->image[y_coordinate * prm->w + x_coordinate].b * laplacian[iteratorFilterHeight][iteratorFilterWidth];
+          red += prm->image[y_coordinate * prm->w + x_coordinate].r *
+                 laplacian[iteratorFilterHeight][iteratorFilterWidth];
+          green += prm->image[y_coordinate * prm->w + x_coordinate].g *
+                   laplacian[iteratorFilterHeight][iteratorFilterWidth];
+          blue += prm->image[y_coordinate * prm->w + x_coordinate].b *
+                  laplacian[iteratorFilterHeight][iteratorFilterWidth];
         }
       }
 
@@ -92,11 +111,11 @@ void *compute_laplacian_threadfn(void *params) {
       adjust_color(&green);
       adjust_color(&blue);
 
-      // printf("index: %lu\n", iteratorImageHeight * prm->w + iteratorImageWidth);
+      // printf("index: %lu\n", iteratorImageHeight * prm->w +
+      // iteratorImageWidth);
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].r = red;
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].g = green;
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].b = blue;
-
     }
   }
 
@@ -158,18 +177,20 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   for (int i = 0; i < LAPLACIAN_THREADS; i++) {
     pthread_join(threads[i], &res);
   }
-  //
+
   // Get the start time
   struct timeval end_time;
   gettimeofday(&end_time, NULL);
 
   // lock the mutex and incremnt total time
-  double diff = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1000000.0;
+  double diff = (end_time.tv_sec - start_time.tv_sec) +
+                (end_time.tv_usec - start_time.tv_usec) / 1000000.0;
   pthread_mutex_lock(&time_mutex);
   total_elapsed_time += diff;
   pthread_mutex_unlock(&time_mutex);
 
   free(params);
+  free(threads);
 
   return result;
 }
@@ -305,15 +326,18 @@ PPMPixel *read_image(const char *filename, unsigned long int *width,
      shall be called "laplacian3.ppm".
 */
 void *manage_image_file(void *args) {
-  printf("thread spawned, args: %s\n", (char *)args);
-
+  manage_args_t *arguments = (manage_args_t *)args;
   unsigned long int w, h;
-  PPMPixel *original_image = read_image(args, &w, &h);
+  PPMPixel *original_image = read_image(arguments->filename, &w, &h);
 
   PPMPixel *result = apply_filters(original_image, w, h, &total_elapsed_time);
-
   // TODO: switch this to result, handle the filename
-  write_image(result, "test.ppm", w, h);
+  char name_buffer[11] = {'l', 'a', 'p', 'l', 'a', 'c', 'i', 'a', 'n', (char) arguments->thread_no, '\0'};
+  write_image(result, name_buffer, w, h);
+
+  free(original_image);
+  free(result);
+
   return NULL;
 }
 
@@ -325,7 +349,8 @@ void *manage_image_file(void *args) {
  */
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    fprintf(stderr, "Less than two arguments");
+    fprintf(stderr, "Usage: ./edge_detector filename[s]\n");
+
     exit(EXIT_FAILURE);
   }
 
@@ -333,10 +358,13 @@ int main(int argc, char *argv[]) {
 
   // Initialize array of threads
   pthread_t *threads = calloc(argc - 1, sizeof(pthread_t));
+  manage_args_t *args = calloc(argc - 1, sizeof(manage_args_t));
 
   // Create a thread for every image file
   for (int i = 1; i < argc; i++) {
-    pthread_create(&threads[i], NULL, manage_image_file, argv[i]);
+    args[i].filename = argv[i];
+    args[i].thread_no = i;
+    pthread_create(&threads[i], NULL, manage_image_file, &args[i]);
   }
 
   // Join the threads
@@ -347,6 +375,8 @@ int main(int argc, char *argv[]) {
 
   printf("Total time elapsed: %f", total_elapsed_time);
 
-  // TODO: Free the struct params
+  free(threads);
+  free(args);
+
   return 0;
 }
