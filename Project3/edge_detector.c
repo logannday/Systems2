@@ -332,11 +332,13 @@ void *manage_image_file(void *args) {
 
   PPMPixel *result = apply_filters(original_image, w, h, &total_elapsed_time);
   // TODO: switch this to result, handle the filename
-  char name_buffer[11] = {'l', 'a', 'p', 'l', 'a', 'c', 'i', 'a', 'n', (char) arguments->thread_no, '\0'};
+  char *name_buffer = malloc(20 * sizeof(char));
+  sprintf(name_buffer, "laplacian%d.ppm", arguments->thread_no);
   write_image(result, name_buffer, w, h);
 
   free(original_image);
   free(result);
+  free(name_buffer);
 
   return NULL;
 }
