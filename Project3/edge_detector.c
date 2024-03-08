@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define LAPLACIAN_THREADS 1
+#define LAPLACIAN_THREADS 8
 
 /* Laplacian filter is 3 by 3 */
 #define FILTER_WIDTH 3
@@ -79,7 +79,7 @@ void *compute_laplacian_threadfn(void *params) {
           unsigned long x_coordinate = (iteratorImageWidth - FILTER_WIDTH / 2 + iteratorFilterWidth + prm->w) % prm->w;
 
           unsigned long y_coordinate = (iteratorImageHeight - FILTER_HEIGHT / 2 + iteratorFilterHeight + prm->h) % prm->h;
-          printf("x: %lu, y: %lu\n", x_coordinate, y_coordinate);
+          // printf("x: %lu, y: %lu\n", x_coordinate, y_coordinate);
 
           // TODO: cap values at 255
           red+= prm->image[y_coordinate * prm->w + x_coordinate].r * laplacian[iteratorFilterHeight][iteratorFilterWidth];
@@ -92,7 +92,7 @@ void *compute_laplacian_threadfn(void *params) {
       adjust_color(&green);
       adjust_color(&blue);
 
-      printf("index: %lu\n", iteratorImageHeight * prm->w + iteratorImageWidth);
+      // printf("index: %lu\n", iteratorImageHeight * prm->w + iteratorImageWidth);
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].r = red;
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].g = green;
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].b = blue;
@@ -164,6 +164,10 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   gettimeofday(&end_time, NULL);
 
   // lock the mutex and incremnt total time
+  pthread_mutex_lock(&time_mutex);
+  // increment total time by the difference between start and end time
+
+  pthread_mutex_unlock(&time_mutex);
 
   free(params);
 
@@ -324,6 +328,8 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Less than two arguments");
     exit(EXIT_FAILURE);
   }
+
+  pthread_mutex_init(&time_mutex, NULL);
 
   // Initialize array of threads
   pthread_t *threads = calloc(argc - 1, sizeof(pthread_t));
