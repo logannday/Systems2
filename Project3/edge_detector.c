@@ -146,20 +146,14 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   pthread_t *threads = calloc(LAPLACIAN_THREADS, sizeof(pthread_t));
 
   // Split the image into height/ Numthreads chunks
-  // TODO: Fix this so it divides the work by rows
-
   int section_size = h / LAPLACIAN_THREADS;
-  // create a struct parameter for each thread and pass it to pthreat_create
-  // with compute_laplacian_threadfn, each thread gets its owns sectionsize
-  // sized section
 
   // Allocate all parameter structs to be passed in to the functions
   struct parameter *params =
       malloc(LAPLACIAN_THREADS * sizeof(struct parameter));
 
+  // Spawn threads to handle image processing
   for (int i = 0; i < LAPLACIAN_THREADS; i++) {
-    // TODO: Memory leak, free the struct
-    // struct parameter *params = malloc(sizeof(struct parameter));
     params[i].image = image;
     params[i].result = result;
     params[i].w = w;
@@ -178,7 +172,7 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
     pthread_join(threads[i], &res);
   }
 
-  // Get the start time
+  // Get the end time
   struct timeval end_time;
   gettimeofday(&end_time, NULL);
 
@@ -210,7 +204,11 @@ void write_image(PPMPixel *image, char *filename, unsigned long int width,
     exit(EXIT_FAILURE);
   }
 
-  fprintf(fp, "P6\n%lu %lu\n%d\n", width, height, RGB_COMPONENT_COLOR);
+  int res = fprintf(fp, "P6\n%lu %lu\n%d\n", width, height, RGB_COMPONENT_COLOR);
+  if (res < 0) {
+    perror("failed to write to file");
+    exit(EXIT_FAILURE);
+  }
 
   // Read the pixel data
   int bytes_written = fwrite(image, sizeof(PPMPixel), width * height, fp);
@@ -277,7 +275,6 @@ PPMPixel *read_image(const char *filename, unsigned long int *width,
   // Skip comments
   while (strchr(line, '#') != NULL) {
     fgets(line, buf_size, fp);
-    // printf("skipping comment");
   }
 
   // Read in width and height
@@ -331,9 +328,19 @@ void *manage_image_file(void *args) {
   PPMPixel *original_image = read_image(arguments->filename, &w, &h);
 
   PPMPixel *result = apply_filters(original_image, w, h, &total_elapsed_time);
-  // TODO: switch this to result, handle the filename
+
   char *name_buffer = malloc(20 * sizeof(char));
-  sprintf(name_buffer, "laplacian%d.ppm", arguments->thread_no);
+  if (name_buffer == NULL) {
+    perror("failed to allocate memory for name buffer");
+    exit(EXIT_FAILURE);
+  }
+
+  int res = sprintf(name_buffer, "laplacian%d.ppm", arguments->thread_no);
+  if (res < 0) {
+    perror("failed to write to buffer");
+    exit(EXIT_FAILURE);
+  }
+
   write_image(result, name_buffer, w, h);
 
   free(original_image);
@@ -360,7 +367,16 @@ int main(int argc, char *argv[]) {
 
   // Initialize array of threads
   pthread_t *threads = calloc(argc - 1, sizeof(pthread_t));
+  if (threads == NULL) {
+    perror("failed to allocate memory for threads");
+    exit(EXIT_FAILURE);
+  }
+
   manage_args_t *args = calloc(argc - 1, sizeof(manage_args_t));
+  if (args == NULL) {
+    perror("failed to allocate memory for args");
+    exit(EXIT_FAILURE);
+  }
 
   // Create a thread for every image file
   for (int i = 1; i < argc; i++) {
