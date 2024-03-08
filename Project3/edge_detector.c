@@ -164,9 +164,9 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   gettimeofday(&end_time, NULL);
 
   // lock the mutex and incremnt total time
+  double diff = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1000000.0;
   pthread_mutex_lock(&time_mutex);
-  // increment total time by the difference between start and end time
-
+  total_elapsed_time += diff;
   pthread_mutex_unlock(&time_mutex);
 
   free(params);
@@ -344,6 +344,8 @@ int main(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
     pthread_join(threads[i], &res);
   }
+
+  printf("Total time elapsed: %f", total_elapsed_time);
 
   // TODO: Free the struct params
   return 0;
