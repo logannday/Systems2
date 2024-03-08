@@ -65,8 +65,6 @@ void *compute_laplacian_threadfn(void *params) {
 
   int red, green, blue;
   struct parameter *prm = (struct parameter *)params;
-  printf("start: %lu size: %lu\n", prm->start, prm->size);
-  printf("width: %lu height: %lu\n", prm->w, prm->h);
 
   // Iterate over rows
   for (int iteratorImageHeight = prm->start; iteratorImageHeight < prm->start + prm->size; iteratorImageHeight++) {
@@ -78,9 +76,9 @@ void *compute_laplacian_threadfn(void *params) {
       // Iterate over filter
       for (int iteratorFilterHeight = 0; iteratorFilterHeight < FILTER_HEIGHT; iteratorFilterHeight++) {
         for (int iteratorFilterWidth = 0; iteratorFilterWidth < FILTER_WIDTH; iteratorFilterWidth++) {
-          unsigned long x_coordinate = ( iteratorImageWidth - FILTER_WIDTH / 2 + iteratorFilterWidth + prm->w) % prm->h;
+          unsigned long x_coordinate = (iteratorImageWidth - FILTER_WIDTH / 2 + iteratorFilterWidth + prm->w) % prm->w;
 
-          unsigned long y_coordinate = (iteratorImageHeight - FILTER_HEIGHT / 2 + iteratorFilterHeight + prm->w) % prm->h;
+          unsigned long y_coordinate = (iteratorImageHeight - FILTER_HEIGHT / 2 + iteratorFilterHeight + prm->h) % prm->h;
           printf("x: %lu, y: %lu\n", x_coordinate, y_coordinate);
 
           // TODO: cap values at 255
@@ -101,6 +99,9 @@ void *compute_laplacian_threadfn(void *params) {
 
     }
   }
+
+  printf("start: %lu size: %lu\n", prm->start, prm->size);
+  printf("width: %lu height: %lu\n", prm->w, prm->h);
 
   return NULL;
 }
