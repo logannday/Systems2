@@ -40,6 +40,14 @@ pthread_mutex_t time_mutex;
 // pthread_mutex_init(&time_mutex, NULL);
 double total_elapsed_time = 0;
 
+void adjust_color(int *color) {
+  if (*color < 0) {
+    *color = 0;
+  } else if (*color > 255) {
+    *color = 255;
+  }
+}
+
 /*This is the thread function. It will compute the new values for the region of
    image specified in params (start to start+size) using convolution. For each
    pixel in the input image, the filter is conceptually placed on top ofthe
@@ -61,17 +69,19 @@ void *compute_laplacian_threadfn(void *params) {
   printf("width: %lu height: %lu\n", prm->w, prm->h);
 
   // Iterate over rows
-  for (int iteratorImageHeight = prm->start; prm->start + prm->size; iteratorImageHeight++) {
+  for (int iteratorImageHeight = prm->start; iteratorImageHeight < prm->start + prm->size; iteratorImageHeight++) {
     // Iterate over pixels in each row
     for (int iteratorImageWidth = 0; iteratorImageWidth < prm->w; iteratorImageWidth++) {
+
+      red = 0; green = 0; blue = 0;
+
       // Iterate over filter
       for (int iteratorFilterHeight = 0; iteratorFilterHeight < FILTER_HEIGHT; iteratorFilterHeight++) {
         for (int iteratorFilterWidth = 0; iteratorFilterWidth < FILTER_WIDTH; iteratorFilterWidth++) {
           unsigned long x_coordinate = ( iteratorImageWidth - FILTER_WIDTH / 2 + iteratorFilterWidth + prm->w) % prm->h;
-          printf("x: %lu\n", x_coordinate);
 
           unsigned long y_coordinate = (iteratorImageHeight - FILTER_HEIGHT / 2 + iteratorFilterHeight + prm->w) % prm->h;
-          printf("y: %lu\n", y_coordinate);
+          printf("x: %lu, y: %lu\n", x_coordinate, y_coordinate);
 
           // TODO: cap values at 255
           red+= prm->image[y_coordinate * prm->w + x_coordinate].r * laplacian[iteratorFilterHeight][iteratorFilterWidth];
@@ -79,9 +89,16 @@ void *compute_laplacian_threadfn(void *params) {
           blue+= prm->image[y_coordinate * prm->w + x_coordinate].b * laplacian[iteratorFilterHeight][iteratorFilterWidth];
         }
       }
+
+      adjust_color(&red);
+      adjust_color(&green);
+      adjust_color(&blue);
+
+      printf("index: %lu\n", iteratorImageHeight * prm->w + iteratorImageWidth);
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].r = red;
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].g = green;
       prm->result[iteratorImageHeight * prm->w + iteratorImageWidth].b = blue;
+
     }
   }
 
@@ -103,7 +120,7 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
   gettimeofday(&start_time, NULL);
 
   // Array of pixels to output
-  PPMPixel *result = malloc(sizeof(PPMPixel));
+  PPMPixel *result = calloc(w * h, sizeof(PPMPixel));
 
   // Initialize array of threads
   pthread_t *threads = calloc(LAPLACIAN_THREADS, sizeof(pthread_t));
@@ -124,7 +141,7 @@ PPMPixel *apply_filters(PPMPixel *image, unsigned long w, unsigned long h,
     // TODO: Memory leak, free the struct
     // struct parameter *params = malloc(sizeof(struct parameter));
     params[i].image = image;
-    params[i].result = image;
+    params[i].result = result;
     params[i].w = w;
     params[i].h = h;
     params[i].start = i * section_size;
