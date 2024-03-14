@@ -216,6 +216,8 @@ void write_image(PPMPixel *image, char *filename, unsigned long int width,
     perror("failed to read in image");
     exit(EXIT_FAILURE);
   }
+
+  fclose(fp);
 }
 
 /* Open the filename image for reading, and parse it.
@@ -310,6 +312,7 @@ PPMPixel *read_image(const char *filename, unsigned long int *width,
   }
 
   free(line);
+  fclose(fp);
   return img;
 }
 
@@ -366,13 +369,13 @@ int main(int argc, char *argv[]) {
   pthread_mutex_init(&time_mutex, NULL);
 
   // Initialize array of threads
-  pthread_t *threads = calloc(argc - 1, sizeof(pthread_t));
+  pthread_t *threads = calloc(argc, sizeof(pthread_t));
   if (threads == NULL) {
     perror("failed to allocate memory for threads");
     exit(EXIT_FAILURE);
   }
 
-  manage_args_t *args = calloc(argc - 1, sizeof(manage_args_t));
+  manage_args_t *args = calloc(argc, sizeof(manage_args_t));
   if (args == NULL) {
     perror("failed to allocate memory for args");
     exit(EXIT_FAILURE);
